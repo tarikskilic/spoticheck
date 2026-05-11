@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { collection, getDocs, limit, orderBy, query } from 'firebase/firestore';
+import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { usePublicQuizzes } from '../hooks/useQuizzes';
 import Navbar from '../components/Navbar';
@@ -26,7 +28,104 @@ function Avatar({ quiz, size = 56 }) {
 }
 
 /* ─── Quiz Card ─── */
-function QuizCard({ quiz, index, onAuthRequired, onHidden }) {
+function ScoreboardModal({ quiz, onClose }) {
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const color = quiz?.ownerColor || '#1DB954';
+
+  useEffect(() => {
+    if (!quiz?.id) return;
+    setLoading(true);
+
+    const scoreQuery = query(
+      collection(db, 'quizzes', quiz.id, 'scores'),
+      orderBy('score', 'desc'),
+      limit(10),
+    );
+
+    getDocs(scoreQuery)
+      .then((snap) => setEntries(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))))
+      .finally(() => setLoading(false));
+  }, [quiz?.id]);
+
+  const rankClass = (i) => (i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '');
+
+  return (
+    <div
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 500,
+        background: 'rgba(0,0,0,.72)',
+        backdropFilter: 'blur(10px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        className="qp-card"
+        style={{
+          width: 'min(520px, 100%)',
+          maxHeight: '82vh',
+          overflow: 'auto',
+          boxShadow: `0 24px 80px ${color}22, 0 20px 80px rgba(0,0,0,.55)`,
+        }}
+      >
+        <div className="qp-lb-header">
+          <div>
+            <div className="qp-lb-title">Liderlik Tablosu</div>
+            <div style={{ color: 'var(--text3)', fontSize: 12, marginTop: 4 }}>
+              {quiz.ownerName || 'Kullanıcı'} quizi
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 999,
+              border: '1px solid rgba(255,255,255,.12)',
+              background: 'rgba(255,255,255,.06)',
+              color: 'var(--text)',
+              cursor: 'pointer',
+              fontWeight: 800,
+            }}
+          >
+            x
+          </button>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: 20, color: 'var(--text3)', fontSize: 13 }}>
+            Liderlik tablosu yükleniyor...
+          </div>
+        ) : entries.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 20, color: 'var(--text3)', fontSize: 13 }}>
+            Henüz skor yok. İlk sen ol!
+          </div>
+        ) : (
+          <div className="qp-lb">
+            {entries.map((entry, i) => (
+              <div key={entry.id} className="qp-lb-row">
+                <span className={`qp-lb-rank ${rankClass(i)}`}>#{i + 1}</span>
+                <span className="qp-lb-name">{entry.userName || 'Kullanıcı'}</span>
+                <span className="qp-lb-score">{entry.score}/{entry.total}</span>
+                <span className="qp-lb-pct">
+                  {Math.round((entry.score / entry.total) * 100)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function QuizCard({ quiz, index, onAuthRequired, onHidden, onLeaderboard }) {
   const navigate              = useNavigate();
   const { user }              = useAuth();
   const [hovered, setHovered] = useState(false);
@@ -244,6 +343,7 @@ function QuizCard({ quiz, index, onAuthRequired, onHidden }) {
       </div>
 
       {/* CTA */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <button
         onClick={(e) => { e.stopPropagation(); handlePlay(); }}
         disabled={locked}
@@ -260,6 +360,39 @@ function QuizCard({ quiz, index, onAuthRequired, onHidden }) {
       >
         {clicked ? 'Başlıyor…' : '▶  Quize Gir'}
       </button>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onLeaderboard?.(quiz);
+        }}
+        style={{
+          width: '100%',
+          padding: '10px',
+          background: 'rgba(255,255,255,0.035)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 12,
+          cursor: 'pointer',
+          color: 'var(--text2)',
+          fontFamily: 'var(--font-body)',
+          fontWeight: 700,
+          fontSize: 12,
+          letterSpacing: '0.2px',
+          transition: 'all 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = `${color}55`;
+          e.currentTarget.style.color = color;
+          e.currentTarget.style.background = `${color}12`;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+          e.currentTarget.style.color = 'var(--text2)';
+          e.currentTarget.style.background = 'rgba(255,255,255,0.035)';
+        }}
+      >
+        Skor Tablosu
+      </button>
+      </div>
     </div>
   );
 }
@@ -397,6 +530,7 @@ export default function LandingPage() {
   const [showAuth, setShowAuth]       = useState(false);
   const [pendingQuiz, setPendingQuiz] = useState(null);
   const [hiddenQuizIds, setHiddenQuizIds] = useState([]);
+  const [scoreboardQuiz, setScoreboardQuiz] = useState(null);
   const { quizzes, loading, error }   = usePublicQuizzes(filter);
   const visibleQuizzes = useMemo(
     () => quizzes.filter((quiz) => !hiddenQuizIds.includes(quiz.id)),
@@ -527,6 +661,7 @@ export default function LandingPage() {
                 index={i}
                 onAuthRequired={handleAuthRequired}
                 onHidden={(id) => setHiddenQuizIds((prev) => [...prev, id])}
+                onLeaderboard={setScoreboardQuiz}
               />
             ))}
           </div>
@@ -552,6 +687,12 @@ export default function LandingPage() {
       </button>
 
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
+      {scoreboardQuiz && (
+        <ScoreboardModal
+          quiz={scoreboardQuiz}
+          onClose={() => setScoreboardQuiz(null)}
+        />
+      )}
     </>
   );
 }

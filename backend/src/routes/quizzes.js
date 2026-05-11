@@ -205,7 +205,7 @@ router.get('/:id/questions', requireAuth, async (req, res) => {
     }
 
     const autoQ = generateAutoQuestions(tracks, quiz.ownerName);
-    const personalQ = generatePersonalQuestions(quiz.personalAnswers || [], tracks);
+    const personalQ = generatePersonalQuestions(quiz.personalAnswers || [], tracks, quiz.ownerName);
     const questions = [...shuffle(autoQ).slice(0, 15), ...personalQ];
 
     if (questions.length !== 20) {

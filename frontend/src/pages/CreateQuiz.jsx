@@ -11,10 +11,10 @@ const SONG_GOAL = 80;
 
 const QUESTIONS = [
   'Issız bir adaya hangi sanatçıyı götürürdün?',
-  'Kişiliğini en iyi hangi şarkı tanımlar?',
-  'Ne olursa olsun hiç geçmediğin şarkı hangisi?',
-  'Hayatının geri kalanında hangi albümü dinlerdin?',
-  'Hangi sanatçının konserine dünyanın öbür ucuna giderdin?',
+  'Kişiliğini en iyi hangi şarkı anlatır?',
+  'Asla sıkılmadan dinlediğin şarkı hangisi?',
+  'Hayatının geri kalanında yalnızca bir albüm dinleyecek olsan hangisi olurdu?',
+  'Hangi sanatçının konseri için dünyanın öbür ucuna giderdin?',
 ];
 
 function isValidPersonalAnswer(value) {
@@ -41,7 +41,7 @@ function PersonalQuestionsModal({ answers, setAnswers, onClose }) {
           <div className="cq-modal-hint">
             <IcoInfo />
             Yalnızca kendi cevabını yazıyorsun. Sistem, arkadaşlarının seçebileceği
-            alternatif seçenekler oluşturacak.
+            alternatif seçenekleri otomatik oluşturacak.
           </div>
 
           {QUESTIONS.map((q, i) => (
