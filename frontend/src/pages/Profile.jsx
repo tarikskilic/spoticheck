@@ -144,7 +144,8 @@ export default function Profile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [range, setRange] = useState('medium_term');
+  const [artistRange, setArtistRange] = useState('medium_term');
+  const [trackRange, setTrackRange] = useState('medium_term');
 
   useEffect(() => {
     if (!user) {
@@ -177,8 +178,8 @@ export default function Profile() {
   const loyalArtists = profile?.loyalArtists || [];
   const tracksAreSpotifyTop = profile?.topTracksSource === 'spotify_top';
   const artistsAreSpotifyTop = profile?.topArtistsSource === 'spotify_top';
-  const displayedArtists = profile?.topArtistsByRange?.[range] || profile?.topArtists || [];
-  const displayedTracks = profile?.topTracksByRange?.[range] || profile?.topTracks || [];
+  const displayedArtists = profile?.topArtistsByRange?.[artistRange] || profile?.topArtists || [];
+  const displayedTracks = profile?.topTracksByRange?.[trackRange] || profile?.topTracks || [];
   const likedTracks = profile?.likedTracks || (
     profile?.topTracksSource === 'liked_recent' ? profile?.topTracks || [] : []
   );
@@ -497,10 +498,10 @@ export default function Profile() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <WaveBars count={4} color="var(--green)" height={18} active />
                 <span style={{ fontSize: 11, color: 'var(--text2)' }}>
-                  {artistsAreSpotifyTop ? RANGE_LABELS[range] : 'Begenilen sarkilardan'}
+                  {artistsAreSpotifyTop ? RANGE_LABELS[artistRange] : 'Begenilen sarkilardan'}
                 </span>
               </div>
-              {artistsAreSpotifyTop && <RangeTabs value={range} onChange={setRange} />}
+              {artistsAreSpotifyTop && <RangeTabs value={artistRange} onChange={setArtistRange} />}
             </div>
             {displayedArtists.length === 0 ? (
               <div style={{ color: 'var(--text3)', fontSize: 13 }}>Veri yok</div>
@@ -523,10 +524,10 @@ export default function Profile() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <WaveBars count={4} color="var(--amber)" height={18} active />
                 <span style={{ fontSize: 11, color: 'var(--text2)' }}>
-                  {tracksAreSpotifyTop ? RANGE_LABELS[range] : 'Spotify begenilerinden'}
+                  {tracksAreSpotifyTop ? RANGE_LABELS[trackRange] : 'Spotify begenilerinden'}
                 </span>
               </div>
-              {tracksAreSpotifyTop && <RangeTabs value={range} onChange={setRange} />}
+              {tracksAreSpotifyTop && <RangeTabs value={trackRange} onChange={setTrackRange} />}
             </div>
             {displayedTracks.length === 0 ? (
               <div style={{ color: 'var(--text3)', fontSize: 13 }}>Veri yok</div>

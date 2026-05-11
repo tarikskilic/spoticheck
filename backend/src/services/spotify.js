@@ -118,6 +118,7 @@ async function getLikedTracks(accessToken, maxTracks = 500) {
           id:     item.track.id,
           name:   item.track.name,
           artist: item.track.artists[0]?.name || 'Bilinmiyor',
+          image:  item.track.album?.images?.[0]?.url || null,
         });
       }
     }
