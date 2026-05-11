@@ -120,6 +120,19 @@ function buildLoyalArtists(tracks = []) {
     .map(([name, count]) => ({ name, count }));
 }
 
+function cleanForFirestore(value) {
+  if (value === undefined) return null;
+  if (value === null) return null;
+  if (value instanceof Date) return value;
+  if (Array.isArray(value)) return value.map(cleanForFirestore);
+  if (typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, cleanForFirestore(item)])
+    );
+  }
+  return value;
+}
+
 function deriveMood({ tracks = [], topArtists = [], dominantGenre = '' }) {
   const text = [
     dominantGenre,
@@ -451,9 +464,9 @@ router.post('/spotify/profile/refresh', requireAuth, async (req, res) => {
     const tokens = await spotify.refreshAccessToken(refreshToken);
     const snapshot = await buildSpotifyProfileSnapshot(tokens.access_token);
 
-    await db.collection('spotifySessions').doc(req.user.uid).set(snapshot.session);
+    await db.collection('spotifySessions').doc(req.user.uid).set(cleanForFirestore(snapshot.session));
     await userRef.set({
-      spotifyProfile: snapshot.profile,
+      spotifyProfile: cleanForFirestore(snapshot.profile),
       spotifyTokens: {
         spotifyId: snapshot.spotifyId,
         refreshToken: tokens.refresh_token || refreshToken,
@@ -461,7 +474,7 @@ router.post('/spotify/profile/refresh', requireAuth, async (req, res) => {
       },
     }, { merge: true });
 
-    return res.json({ connected: true, profile: snapshot.profile });
+    return res.json({ connected: true, profile: cleanForFirestore(snapshot.profile) });
   } catch (err) {
     console.error('Spotify profil yenileme hatasi:', err.message);
     return res.status(500).json({ error: 'Spotify profili yenilenemedi' });

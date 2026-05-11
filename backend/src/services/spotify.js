@@ -201,10 +201,10 @@ async function getTopArtists(accessToken, timeRange = 'medium_term') {
     params:  { limit: 10, time_range: timeRange },
   });
   return res.data.items.map(a => ({
-    id:     a.id,
-    name:   a.name,
-    genres: a.genres,
-    image:  a.images[0]?.url || null,
+    id:     a.id || null,
+    name:   a.name || 'Bilinmiyor',
+    genres: Array.isArray(a.genres) ? a.genres.filter(Boolean) : [],
+    image:  a.images?.[0]?.url || null,
   }));
 }
 
@@ -217,10 +217,10 @@ async function getTopTracks(accessToken, timeRange = 'medium_term') {
     params:  { limit: 10, time_range: timeRange },
   });
   return res.data.items.map(t => ({
-    id:     t.id,
-    name:   t.name,
+    id:     t.id || null,
+    name:   t.name || '',
     artist: t.artists[0]?.name || 'Bilinmiyor',
-    image:  t.album.images[0]?.url || null,
+    image:  t.album?.images?.[0]?.url || null,
   }));
 }
 
