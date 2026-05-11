@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+backend/serviceAccount.json
+serviceAccount.json
+*.log
+*.tar
+.ssh-spoticheck/
+soundcheck-server-upload/
+.claude/
+design_create_quiz/
+design_landing_page/
