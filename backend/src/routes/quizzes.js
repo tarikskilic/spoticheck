@@ -59,6 +59,22 @@ function isValidPersonalAnswer(value) {
   return text.length >= 2 && /[\p{L}\p{N}]/u.test(text);
 }
 
+function trimText(value, max = 160) {
+  return String(value || '').trim().slice(0, max);
+}
+
+function sanitizeAnswers(answers) {
+  if (!Array.isArray(answers)) return [];
+
+  return answers.slice(0, 20).map((answer) => ({
+    question: trimText(answer?.question, 220),
+    selected: trimText(answer?.selected),
+    correct: trimText(answer?.correct),
+    isCorrect: !!answer?.isCorrect,
+    type: answer?.type === 'personal' ? 'personal' : 'auto',
+  })).filter((answer) => answer.question && answer.selected && answer.correct);
+}
+
 router.get('/public', async (req, res) => {
   try {
     const snap = await db
@@ -221,7 +237,7 @@ router.get('/:id/questions', requireAuth, async (req, res) => {
 
 router.post('/:id/score', requireAuth, async (req, res) => {
   const { id } = req.params;
-  const { score, total } = req.body;
+  const { score, total, answers = [] } = req.body;
   const numericScore = Number(score);
   const numericTotal = Number(total);
 
@@ -244,6 +260,7 @@ router.post('/:id/score', requireAuth, async (req, res) => {
       userName,
       score: numericScore,
       total: numericTotal,
+      answers: sanitizeAnswers(answers),
       completedAt: new Date(),
     });
 

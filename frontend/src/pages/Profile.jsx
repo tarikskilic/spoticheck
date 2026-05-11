@@ -175,6 +175,7 @@ export default function Profile() {
   const mood = profile?.mood || {};
   const listeningTime = profile?.listeningTime || {};
   const songPersona = profile?.songPersona || {};
+  const socialProfile = profile?.socialProfile || {};
   const loyalArtists = profile?.loyalArtists || [];
   const tracksAreSpotifyTop = profile?.topTracksSource === 'spotify_top';
   const artistsAreSpotifyTop = profile?.topArtistsSource === 'spotify_top';
@@ -376,6 +377,93 @@ export default function Profile() {
             </div>
           </Card>
         )}
+
+        <Card style={{ marginBottom: 12 }}>
+          <CardLabel>Arkadaslarinin Gozunden</CardLabel>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 16 }}>
+            <div style={{
+              background: 'rgba(255,255,255,0.035)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 12,
+              padding: 12,
+            }}>
+              <div style={{ color: 'var(--text3)', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                Cozen Kisi
+              </div>
+              <div style={{ fontFamily: 'var(--font-head)', fontSize: 24, fontWeight: 800, color: 'var(--green)', marginTop: 5 }}>
+                {socialProfile.players || 0}
+              </div>
+            </div>
+            <div style={{
+              background: 'rgba(255,255,255,0.035)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 12,
+              padding: 12,
+            }}>
+              <div style={{ color: 'var(--text3)', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                Deneme
+              </div>
+              <div style={{ fontFamily: 'var(--font-head)', fontSize: 24, fontWeight: 800, color: 'var(--amber)', marginTop: 5 }}>
+                {socialProfile.attempts || 0}
+              </div>
+            </div>
+            <div style={{
+              background: 'rgba(255,255,255,0.035)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: 12,
+              padding: 12,
+            }}>
+              <div style={{ color: 'var(--text3)', fontSize: 10, fontWeight: 800, letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                Ort. Tanima
+              </div>
+              <div style={{ fontFamily: 'var(--font-head)', fontSize: 24, fontWeight: 800, color: socialProfile.avgScore >= 70 ? 'var(--green)' : 'var(--amber)', marginTop: 5 }}>
+                {socialProfile.avgScore || 0}%
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 800, marginBottom: 8 }}>
+                En iyi bilinen imzan
+              </div>
+              {(socialProfile.mostRecognized || []).length === 0 ? (
+                <div style={{ color: 'var(--text3)', fontSize: 13 }}>Yeni quiz cozumleri geldikce dolacak.</div>
+              ) : (
+                socialProfile.mostRecognized.slice(0, 3).map((item, i) => (
+                  <div key={item.answer || i} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ fontSize: 14, fontWeight: 800 }}>{item.answer}</div>
+                    <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 3 }}>{item.count} kez dogru bilindi</div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 800, marginBottom: 8 }}>
+                En cok sasirtan cevaplar
+              </div>
+              {(socialProfile.mostMissed || []).length === 0 ? (
+                <div style={{ color: 'var(--text3)', fontSize: 13 }}>Henuz yeterli yanilma verisi yok.</div>
+              ) : (
+                socialProfile.mostMissed.slice(0, 3).map((item, i) => (
+                  <div key={`${item.answer}-${i}`} style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ fontSize: 14, fontWeight: 800 }}>{item.answer}</div>
+                    <div style={{ color: 'var(--text3)', fontSize: 11, marginTop: 3 }}>
+                      {item.count} kez kacirildi{item.commonWrong ? `, en cok "${item.commonWrong}" sanildi` : ''}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {(socialProfile.lines || []).length > 0 && (
+            <div style={{ marginTop: 16, color: 'var(--text2)', fontSize: 13, lineHeight: 1.6 }}>
+              {socialProfile.lines.map((line, i) => <div key={i}>{line}</div>)}
+            </div>
+          )}
+        </Card>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12, marginBottom: 12 }}>
           <Card>

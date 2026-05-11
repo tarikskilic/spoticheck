@@ -134,6 +134,134 @@ function cleanForFirestore(value) {
   return value;
 }
 
+function scoreMillis(value) {
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (value.seconds) return value.seconds * 1000;
+  return new Date(value).getTime() || 0;
+}
+
+function pushCount(map, key, data = {}) {
+  const cleanKey = String(key || '').trim();
+  if (!cleanKey) return;
+  const existing = map.get(cleanKey) || { key: cleanKey, count: 0, ...data };
+  existing.count += 1;
+  map.set(cleanKey, { ...existing, ...data, count: existing.count });
+}
+
+async function buildSocialMusicProfile(uid) {
+  const quizSnap = await db.collection('quizzes')
+    .where('ownerId', '==', uid)
+    .limit(20)
+    .get();
+
+  if (quizSnap.empty) {
+    return {
+      attempts: 0,
+      players: 0,
+      avgScore: 0,
+      mostRecognized: [],
+      mostMissed: [],
+      lines: ['Quizlerin cozuldukce arkadaslarinin seni nasil tanidigi burada olusacak.'],
+    };
+  }
+
+  const players = new Set();
+  const recognized = new Map();
+  const missed = new Map();
+  let attempts = 0;
+  let pctTotal = 0;
+
+  for (const quizDoc of quizSnap.docs) {
+    const scoresSnap = await quizDoc.ref.collection('scores')
+      .orderBy('completedAt', 'desc')
+      .limit(100)
+      .get();
+
+    for (const scoreDoc of scoresSnap.docs) {
+      const score = scoreDoc.data();
+      attempts += 1;
+      if (score.userId) players.add(score.userId);
+
+      const total = Number(score.total) || 0;
+      const numericScore = Number(score.score) || 0;
+      if (total > 0) pctTotal += Math.round((numericScore / total) * 100);
+
+      for (const answer of Array.isArray(score.answers) ? score.answers : []) {
+        const correct = String(answer.correct || '').trim();
+        const question = String(answer.question || '').trim();
+        const selected = String(answer.selected || '').trim();
+        if (!correct || !question) continue;
+
+        if (answer.isCorrect) {
+          pushCount(recognized, correct, { question, type: answer.type || 'auto' });
+        } else {
+          const key = `${correct}__${question}`;
+          const existing = missed.get(key) || {
+            key,
+            answer: correct,
+            question,
+            count: 0,
+            wrongChoices: {},
+            type: answer.type || 'auto',
+          };
+          existing.count += 1;
+          if (selected) existing.wrongChoices[selected] = (existing.wrongChoices[selected] || 0) + 1;
+          missed.set(key, existing);
+        }
+      }
+    }
+  }
+
+  const mostRecognized = [...recognized.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .map((item) => ({
+      answer: item.key,
+      question: item.question,
+      count: item.count,
+      type: item.type,
+    }));
+
+  const mostMissed = [...missed.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3)
+    .map((item) => {
+      const commonWrong = Object.entries(item.wrongChoices)
+        .sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+      return {
+        answer: item.answer,
+        question: item.question,
+        count: item.count,
+        commonWrong,
+        type: item.type,
+      };
+    });
+
+  const avgScore = attempts ? Math.round(pctTotal / attempts) : 0;
+  const lines = [
+    attempts
+      ? `${players.size || attempts} kisi toplam ${attempts} denemeyle seni test etti.`
+      : 'Quizlerin cozuldukce sosyal muzik profilin burada olusacak.',
+    mostRecognized[0]
+      ? `En iyi bilinen imzan: ${mostRecognized[0].answer}.`
+      : 'Henuz net bir muzik imzan cikmadi.',
+    mostMissed[0]
+      ? `En sasirtan cevap: ${mostMissed[0].answer}.`
+      : 'Arkadaslarinin kor noktasi henuz olusmadi.',
+  ];
+
+  return {
+    attempts,
+    players: players.size,
+    avgScore,
+    mostRecognized,
+    mostMissed,
+    lines,
+    updatedAt: new Date(),
+  };
+}
+
 function deriveMood({ tracks = [], topArtists = [], dominantGenre = '' }) {
   const text = [
     dominantGenre,
@@ -402,8 +530,10 @@ router.get('/spotify/profile', requireAuth, async (req, res) => {
           count: null,
           rank: index + 1,
         }));
+      const socialProfile = await buildSocialMusicProfile(req.user.uid);
       const normalizedProfile = {
         ...savedProfile,
+        socialProfile,
         mood: savedProfile.mood || deriveMood({
           tracks: [],
           topArtists: savedProfile.topArtists || [],
@@ -451,7 +581,11 @@ router.get('/spotify/profile', requireAuth, async (req, res) => {
     const sessionSnap = await db.collection('spotifySessions').doc(req.user.uid).get();
     if (!sessionSnap.exists) return res.json({ connected: false, profile: null });
 
-    const fallbackProfile = buildFallbackProfile(sessionSnap.data());
+    const socialProfile = await buildSocialMusicProfile(req.user.uid);
+    const fallbackProfile = {
+      ...buildFallbackProfile(sessionSnap.data()),
+      socialProfile,
+    };
     await userRef.set({ spotifyProfile: fallbackProfile }, { merge: true });
 
     return res.json({ connected: true, profile: fallbackProfile });
@@ -476,6 +610,11 @@ router.post('/spotify/profile/refresh', requireAuth, async (req, res) => {
 
     const tokens = await spotify.refreshAccessToken(refreshToken);
     const snapshot = await buildSpotifyProfileSnapshot(tokens.access_token);
+    const socialProfile = await buildSocialMusicProfile(req.user.uid);
+    const responseProfile = {
+      ...snapshot.profile,
+      socialProfile,
+    };
 
     await db.collection('spotifySessions').doc(req.user.uid).set(cleanForFirestore(snapshot.session));
     await userRef.set({
@@ -487,7 +626,7 @@ router.post('/spotify/profile/refresh', requireAuth, async (req, res) => {
       },
     }, { merge: true });
 
-    return res.json({ connected: true, profile: cleanForFirestore(snapshot.profile) });
+    return res.json({ connected: true, profile: cleanForFirestore(responseProfile) });
   } catch (err) {
     console.error('Spotify profil yenileme hatasi:', err.message);
     return res.status(500).json({ error: 'Spotify profili yenilenemedi' });

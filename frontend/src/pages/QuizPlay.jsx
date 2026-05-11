@@ -141,6 +141,7 @@ export default function QuizPlay() {
   const [savingScore, setSavingScore] = useState(false);
 
   const scoreRef = useRef(0);
+  const answersRef = useRef([]);
   const [scoreDisp, setScoreDisp] = useState(0);
   const [copied, setCopied] = useState(false);
 
@@ -177,6 +178,7 @@ export default function QuizPlay() {
       if (!res.ok) throw new Error(data.error || 'Sorular yüklenemedi');
       setQuestions(data);
       scoreRef.current = 0;
+      answersRef.current = [];
       setScoreDisp(0);
       setIdx(0);
       setSelected(null);
@@ -192,6 +194,19 @@ export default function QuizPlay() {
   function handleAnswer(opt) {
     if (selected !== null) return;
     setSelected(opt);
+    const currentQuestion = questions[questionIdx];
+    const correctOption = currentQuestion?.options?.find((option) => option.correct);
+
+    answersRef.current = [
+      ...answersRef.current,
+      {
+        question: currentQuestion?.question || '',
+        selected: opt.label,
+        correct: correctOption?.label || '',
+        isCorrect: !!opt.correct,
+        type: currentQuestion?.type || 'auto',
+      },
+    ];
 
     let newScore = scoreRef.current;
     if (opt.correct) {
@@ -219,7 +234,7 @@ export default function QuizPlay() {
       const res = await fetch(`/api/quizzes/${quiz.id}/score`, {
         method: 'POST',
         headers: await authHeaders(),
-        body: JSON.stringify({ score: finalScore, total }),
+        body: JSON.stringify({ score: finalScore, total, answers: answersRef.current }),
       });
       if (!res.ok) throw new Error();
       setScoreSaved(true);
@@ -236,6 +251,7 @@ export default function QuizPlay() {
     setIdx(0);
     setSelected(null);
     scoreRef.current = 0;
+    answersRef.current = [];
     setScoreDisp(0);
     setScoreSaved(false);
   }
