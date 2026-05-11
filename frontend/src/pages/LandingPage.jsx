@@ -28,6 +28,47 @@ function Avatar({ quiz, size = 56 }) {
 }
 
 /* ─── Quiz Card ─── */
+function scoreTime(entry) {
+  const value = entry.completedAt;
+  if (!value) return 0;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (value.seconds) return value.seconds * 1000;
+  return new Date(value).getTime() || 0;
+}
+
+function compactLeaderboard(entries) {
+  const grouped = new Map();
+
+  for (const entry of entries) {
+    const userKey = entry.userId || String(entry.userName || '').trim().toLowerCase();
+    if (!userKey) continue;
+
+    const score = Number(entry.score) || 0;
+    const total = Number(entry.total) || 0;
+    const pct = total > 0 ? score / total : 0;
+    const time = scoreTime(entry);
+    const existing = grouped.get(userKey);
+    const attempts = (existing?.attempts || 0) + 1;
+    const isBetter = !existing
+      || pct > existing.pct
+      || (pct === existing.pct && score > existing.score)
+      || (pct === existing.pct && score === existing.score && time > existing.time);
+
+    grouped.set(userKey, {
+      ...(isBetter ? entry : existing),
+      score: isBetter ? score : existing.score,
+      total: isBetter ? total : existing.total,
+      pct: isBetter ? pct : existing.pct,
+      time: isBetter ? time : existing.time,
+      attempts,
+    });
+  }
+
+  return [...grouped.values()]
+    .sort((a, b) => b.pct - a.pct || b.score - a.score || a.attempts - b.attempts || b.time - a.time)
+    .slice(0, 10);
+}
+
 function ScoreboardModal({ quiz, onClose }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -39,12 +80,12 @@ function ScoreboardModal({ quiz, onClose }) {
 
     const scoreQuery = query(
       collection(db, 'quizzes', quiz.id, 'scores'),
-      orderBy('score', 'desc'),
-      limit(10),
+      orderBy('completedAt', 'desc'),
+      limit(100),
     );
 
     getDocs(scoreQuery)
-      .then((snap) => setEntries(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }))))
+      .then((snap) => setEntries(compactLeaderboard(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })))))
       .finally(() => setLoading(false));
   }, [quiz?.id]);
 
@@ -116,6 +157,7 @@ function ScoreboardModal({ quiz, onClose }) {
                 <span className="qp-lb-pct">
                   {Math.round((entry.score / entry.total) * 100)}%
                 </span>
+                <span className="qp-lb-attempts">{entry.attempts} deneme</span>
               </div>
             ))}
           </div>

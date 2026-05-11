@@ -717,6 +717,15 @@ body {
 .qp-lb-name  { flex: 1; font-size: 13px; font-weight: 600; }
 .qp-lb-score { font-size: 13px; font-weight: 700; color: var(--green); font-family: var(--font-head); }
 .qp-lb-pct   { font-size: 11px; color: var(--text2); margin-left: 4px; }
+.qp-lb-attempts {
+  font-size: 10px;
+  color: var(--text3);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 999px;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
 
 /* quiz preview */
 .qp-preview-owner { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
