@@ -74,6 +74,7 @@ function buildFallbackProfile(data = {}) {
     image: data.image || null,
     topArtists,
     topTracks,
+    likedTracks: topTracks,
     topArtistsByRange: {
       short_term: topArtists,
       medium_term: topArtists,
@@ -330,6 +331,15 @@ async function buildSpotifyProfileSnapshot(accessToken) {
       image: profile.images?.[0]?.url || null,
       topArtists: topArtists.length ? topArtists.slice(0, 5) : fallback.topArtists,
       topTracks: topTracks.length ? topTracks.slice(0, 5) : fallback.topTracks,
+      likedTracks: tracks
+        .filter((track) => track?.name)
+        .slice(0, 5)
+        .map((track) => ({
+          id: track.id || null,
+          name: track.name,
+          artist: track.artist || 'Bilinmiyor',
+          image: track.image || null,
+        })),
       topArtistsByRange: topArtists.length ? topArtistsByRange : fallback.topArtistsByRange,
       topTracksByRange: topTracks.length ? topTracksByRange : fallback.topTracksByRange,
       topArtistsSource: topArtists.length ? 'spotify_top' : 'liked_artists',
@@ -425,6 +435,9 @@ router.get('/spotify/profile', requireAuth, async (req, res) => {
           medium_term: savedProfile.topTracks || [],
           long_term: savedProfile.topTracks || [],
         },
+        likedTracks: savedProfile.likedTracks || (
+          savedProfile.topTracksSource === 'liked_recent' ? savedProfile.topTracks || [] : []
+        ),
         topArtistsSource: savedProfile.topArtistsSource || 'liked_artists',
         topTracksSource: savedProfile.topTracksSource || (
           (savedProfile.topTracks || []).some((track) => track?.image || track?.id)

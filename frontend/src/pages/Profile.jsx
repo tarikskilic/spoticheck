@@ -179,6 +179,9 @@ export default function Profile() {
   const artistsAreSpotifyTop = profile?.topArtistsSource === 'spotify_top';
   const displayedArtists = profile?.topArtistsByRange?.[range] || profile?.topArtists || [];
   const displayedTracks = profile?.topTracksByRange?.[range] || profile?.topTracks || [];
+  const likedTracks = profile?.likedTracks || (
+    profile?.topTracksSource === 'liked_recent' ? profile?.topTracks || [] : []
+  );
 
   async function refreshSpotifyProfile() {
     if (!user || refreshing) return;
@@ -541,6 +544,32 @@ export default function Profile() {
             )}
           </Card>
         </div>
+
+        <Card style={{ marginBottom: 12 }}>
+          <CardLabel>Son Begendigin Sarkilar</CardLabel>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+            <WaveBars count={4} color="var(--amber)" height={18} active />
+            <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+              Spotify begenilerinden
+            </span>
+          </div>
+          {likedTracks.length === 0 ? (
+            <div style={{ color: 'var(--text3)', fontSize: 13 }}>
+              Profili yenileyince son begenilerin burada gorunecek.
+            </div>
+          ) : (
+            likedTracks.slice(0, 5).map((track, i) => (
+              <RankRow
+                key={track.id || track.name || i}
+                rank={i + 1}
+                image={track.image}
+                name={track.name}
+                sub={track.artist}
+                color="var(--amber)"
+              />
+            ))
+          )}
+        </Card>
 
         <button
           onClick={() => navigate('/')}
